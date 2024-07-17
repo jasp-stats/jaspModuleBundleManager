@@ -1,0 +1,16 @@
+Package: jaspModuleBundleManager
+Type: Package
+Title: Helper Package for Installing JASP Modules
+Version: 0.1.0
+Author: JASP Team
+Maintainer: Rens Dofferhoff <r.m.j.dofferhoff@uva.nl>
+Description: Creates and Manages JASP module bundles
+License: GPL2+
+Encoding: UTF-8
+Depends: 
+    R (>= 3.4)
+Imports:
+    renv (>= 1.0.0),
+    tools,
+    utils
+RoxygenNote: 7.2.3
