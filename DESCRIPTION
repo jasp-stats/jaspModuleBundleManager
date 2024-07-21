@@ -10,7 +10,14 @@ Encoding: UTF-8
 Depends: 
     R (>= 3.4)
 Imports:
-    renv (>= 1.0.0),
     tools,
-    utils
-RoxygenNote: 7.2.3
+    utils,
+    openssl,
+    fs,
+    zip,
+    rjson,
+    stringr
+RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
