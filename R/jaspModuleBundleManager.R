@@ -36,7 +36,7 @@ deleteJaspModuleBundle <- function(name, installPath) {
 }
 
 #' @export
-createJaspModuleBundle <- function(moduledir, resultdir) {
+createJaspModuleBundle <- function(moduledir, resultdir = './') {
   name <- fs::path_file(moduledir)
 
   #copy all the (dependency) rpkg folders in the moduledir but change the name of their roots to their sha256 hash
@@ -58,6 +58,13 @@ createJaspModuleBundle <- function(moduledir, resultdir) {
   resultPath = fs::path_ext_set(fs::path(resultdir, name), 'JASPModule')
   zip::zipr(resultPath, fs::dir_ls(stagingDir))
   unlink(stagingDir, recursive=TRUE)
+}
+
+# Todo expand with version check
+#' @export 
+checkIfJaspModuleBundleInstalled <- function(installPath, name, version = NULL) {
+  manifests <- fs::dir_ls(fs::path(installPath, 'manifests'), type='file', regexp=name)
+  length(manifests) > 0
 }
 
 #remove the binarys related to oldManifst, that are unused in the other manifest in manifest folder or newManifest
