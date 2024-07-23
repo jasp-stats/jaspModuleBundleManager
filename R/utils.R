@@ -7,6 +7,7 @@ generateDirectoryChecksum <- function(path) {
 
 createLink <- function(from, to) {
   if (.Platform$OS.type == "windows") { 
+    from <- fs::path_abs(fs::path_norm(fs::path(fs::path_dir(to[[1]]), from))) #on windows there are no nice relative symlinks :( so we create abs path
     Sys.junction(from, to)
   }
   else {
