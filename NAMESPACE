@@ -2,6 +2,8 @@
 
 export(checkIfJaspModuleBundleInstalled)
 export(createJaspModuleBundle)
-export(deleteJaspModuleBundle)
-export(deleteJaspModuleBundleByManifest)
 export(installJaspModuleBundle)
+export(repairJaspModuleBundle)
+export(repairJaspModuleBundleByManifest)
+export(uninstallJaspModuleBundle)
+export(uninstallJaspModuleBundleByManifest)
