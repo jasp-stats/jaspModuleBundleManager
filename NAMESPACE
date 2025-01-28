@@ -2,6 +2,7 @@
 
 export(checkIfJaspModuleBundleInstalled)
 export(createJaspModuleBundle)
+export(extractBundleIntoRemoteCellarRepo)
 export(installJaspModuleBundle)
 export(repairJaspModuleBundle)
 export(repairJaspModuleBundleByManifest)
