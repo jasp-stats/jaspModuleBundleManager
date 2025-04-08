@@ -17,14 +17,15 @@ installJaspModuleBundle <- function(installPath, bundlePath) {
   #copy all binary pkgs we do not yet have.
   stagingDir <- fs::dir_create(tempdir(), 'bundleManagerInstall')
   untarBundleDir <- fs::dir_create(stagingDir, 'bundleUntar')
-  on.exit(unlink(stagingDir))
-  untar(bundlePath, tar='internal', exdir=untarBundleDir)
+  on.exit(if(fs::dir_exists(stagingDir)) fs::dir_delete(stagingDir))
+  extractL0TarAchive(bundlePath, untarBundleDir)
 
   pkgs <- fs::dir_ls(untarBundleDir, type='file', glob='*_manifest.json', invert=TRUE)
   untarPkgtoBinDir <- function(pkg) {
     hash <- fs::path_file(pkg)
-    if(!fs::dir_exists(fs::path(binaryPkgsPath, hash)))
-      untar(pkg, tar='internal', exdir=fs::path(binaryPkgsPath, hash))
+    if(!fs::dir_exists(fs::path(binaryPkgsPath, hash))){
+      extractL0TarAchive(pkg, fs::path(binaryPkgsPath, hash))
+    }
   }
   sapply(pkgs, untarPkgtoBinDir)
 
@@ -35,12 +36,13 @@ installJaspModuleBundle <- function(installPath, bundlePath) {
   tmp <- fs::file_copy(manifest[[1]], manifestDestinationPath, overwrite=TRUE)
   fs::file_delete(manifest)
   manifest <- tmp
+  manifest <- parseManifest(manifest)[, 1]
 
   #download and extract any missing pkgs that were not included in the bundle from the online repo
-  repairJaspModuleBundleByManifest(installPath, manifest)
+  if(!manifest$complete == TRUE)
+    repairJaspModuleBundleByManifest(installPath, manifest)
 
   #create moduleLib entry (folder with symlinks to actual pkgs) from manifest mapping
-  manifest <- parseManifest(manifest)[, 1]
   entryPath <- fs::path(modulesLibPaths, manifest$name)
   fs::dir_create(entryPath)
   from <- fs::path(fs::path_rel(binaryPkgsPath, start=entryPath), manifest$from)
@@ -126,7 +128,7 @@ repairJaspModuleBundleByManifest <- function(installPath, manifest) {
 createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRUE, mustPackage=NULL, includeInManifest=NULL) {
   moduleName <- fs::path_file(moduleLib)
   stagingDir <- fs::dir_create(tempdir(), moduleName)
-  on.exit(fs::dir_delete(stagingDir))
+  on.exit(if(fs::dir_exists(stagingDir)) fs::dir_delete(stagingDir))
   tarDir <- fs::dir_create(stagingDir, 'tarDir')
   preCompressionBundleDir <- fs::dir_create(stagingDir, 'uncompressed')
 
@@ -168,7 +170,7 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
   RVersion <- paste0('R-', paste(R.Version()$major, substring(R.Version()$minor, 1, 1), sep = '.'))
   os <- getOS()
   arch <- unname(Sys.info()['machine'])
-  manifestList <- list(name=moduleName, version=version, checksum=hash, pack_date=packDate,
+  manifestList <- list(name=moduleName, version=version, complete=packageAll, checksum=hash, pack_date=packDate,
                   RVersion=RVersion, os=os, architecture=arch,
                   mapping=paste(pkgToArchiveMap, mappingNames, sep=" => "))
   json <- rjson::toJSON(c(manifestList, includeInManifest), indent=1)
@@ -184,10 +186,10 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
 #' @export
 extractBundleIntoRemoteCellarRepo <- function(repoRoot, bundlePath, repoName='development', RVersion, os, architecture) {
   #extract bundle and parse manifest
-  stagingDir <- fs::dir_create(tempdir(), 'bundleManagerRepoExtract')
+  stagingDir <- fs::dir_create(tempdir(), 'bundleManagerRepoExtract') #cant use tempdir because of R tar..
   untarBundleDir <- fs::dir_create(stagingDir, 'bundleUntar')
-  on.exit(fs::dir_delete(stagingDir))
-  untar(bundlePath, tar='internal', exdir=untarBundleDir)
+  on.exit(if(fs::dir_exists(stagingDir))fs::dir_delete(stagingDir))
+  extractL0TarAchive(bundlePath, untarBundleDir)
   manifestPath <- fs::dir_ls(untarBundleDir, type='file', glob='*_manifest.json')[[1]]
   manifest <- parseManifest(manifestPath)[, 1]
 

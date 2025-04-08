@@ -18,6 +18,16 @@ createL0TarAchive <- function(inputDir, outputPath) { #using TAR in R is so damn
   setwd(old_workdir)
 }
 
+extractL0TarAchive <- function(tarfile, exdir) { #using TAR in R is so damn annoying
+  exdir <- fs::path_abs(exdir)
+  tarfile <- fs::path_abs(tarfile)
+  fs::dir_create(exdir)
+  old_workdir <- setwd(fs::path_dir(tarfile))
+  on.exit(setwd(old_workdir)) #if error
+  untar(tarfile, tar='internal', exdir=exdir)
+  setwd(old_workdir)
+}
+
 createLink <- function(from, to, forceSymlink=FALSE) {
   fs::link_delete(to[fs::link_exists(to)])
   if (.Platform$OS.type == "windows") {
@@ -54,7 +64,7 @@ gatherPkgsFromRepo <- function(hashes, targetDir = './', additionalRepoURLs = NU
     if(req$status_code != 200)
       return(FALSE)
     if(!fs::dir_exists(fs::path(targetDir, file)))
-      untar(compressed, tar='internal', exdir=fs::path(targetDir, file))
+      extractL0TarAchive(compressed, fs::path(targetDir, file))
     TRUE
   }
 
