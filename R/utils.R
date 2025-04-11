@@ -14,7 +14,7 @@ createL0TarAchive <- function(inputDir, outputPath) { #using TAR in R is so damn
   outputPath <- fs::path_abs(outputPath)
   old_workdir <- setwd(inputDir)
   on.exit(setwd(old_workdir)) #if error
-  tar(outputPath, files=fs::path_rel(fs::dir_ls(inputDir)), compression='gzip', tar='internal', compression_level=9)
+  tar(outputPath, compression='gzip', tar='internal', compression_level=9)
   setwd(old_workdir)
 }
 
@@ -22,9 +22,9 @@ extractL0TarAchive <- function(tarfile, exdir) { #using TAR in R is so damn anno
   exdir <- fs::path_abs(exdir)
   tarfile <- fs::path_abs(tarfile)
   fs::dir_create(exdir)
-  old_workdir <- setwd(fs::path_dir(tarfile))
+  old_workdir <- setwd(exdir)
   on.exit(setwd(old_workdir)) #if error
-  untar(tarfile, tar='internal', exdir=exdir)
+  untar(tarfile, tar='internal')
   setwd(old_workdir)
 }
 
