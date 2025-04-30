@@ -68,7 +68,7 @@ gatherPkgsFromRepo <- function(hashes, targetDir = './', additionalRepoURLs = NU
     TRUE
   }
 
-  repos <- c('https://static.jasp-stats.org/JASP_BINARY_REPO/', 'http://0.0.0.0:8000/', additionalRepoURLs)
+  repos <- c('https://static.jasp-stats.org/JASP_BINARY_REPO/', additionalRepoURLs)
   hashesNeeded <- hashes
   for(repo in repos) {
     if(length(hashesNeeded) <= 0) break
