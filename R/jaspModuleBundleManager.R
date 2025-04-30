@@ -144,7 +144,6 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
   #get all the pkgs and tar them. rename to hash of tar itself. Gives back a list of hashes with the original pkg-Name in names() (so a map)
   makeTar <- function(dir) {
     tmp <- fs::path(stagingDir, 'tmp.tar.gz')
-    on.exit(if(fs::file_exists(tmp)) fs::file_delete(tmp))
     createL0TarAchive(dir, tmp)
     hash <- stringr::str_replace(openssl::sha256(file(tmp)), ':', '')
     fs::file_move(tmp, fs::path(tarDir, hash))
