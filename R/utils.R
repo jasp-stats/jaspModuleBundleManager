@@ -9,6 +9,18 @@ getOS <- function() {
   return(os)
 }
 
+hashDir <- function(path) {
+  hash <- function(x) {stringr::str_replace(openssl::sha256(x), ':', '')}
+  hashFile <- function(x) {hash(file(x))}
+  hashes <- fs::dir_map(path, all = TRUE, recurse = TRUE, type='file', fun = hashFile)
+  hash(paste0(hashes, collapse = ""))
+}
+
+getRemoteCellarURLs <- function(baseURLs, repoNames) {
+  func <- function(a,b) {paste(a,b, 'PKGS', sep='/')}
+  outer(baseURLs, repoNames, FUN=func)
+}
+
 createL0TarAchive <- function(inputDir, outputPath) { #using TAR in R is so damn annoying
   inputDir <- fs::path_abs(inputDir)
   outputPath <- fs::path_abs(outputPath)
@@ -54,10 +66,10 @@ parseManifest <- function(manifestPath) {
   sapply(manifestPath, parse)
 }
 
-gatherPkgsFromRepo <- function(hashes, targetDir = './', additionalRepoURLs = NULL) {
+gatherPkgsFromRepo <- function(hashes, targetDir = './', repoNames = c('development'), additionalRepoURLs = NULL) {
   download <- function(file, repoURL, targetDir) {
     compressed <- fs::path(tempdir(), file)
-    on.exit(fs::dir_delete(compressed))
+    on.exit(if(fs::dir_exists(compressed)) fs::dir_delete(compressed))
     req <- tryCatch({
       curl::curl_fetch_disk(paste0(repoURL, '/', file), compressed)
     }, error = function(e) { list(status_code=404) })
@@ -65,10 +77,13 @@ gatherPkgsFromRepo <- function(hashes, targetDir = './', additionalRepoURLs = NU
       return(FALSE)
     if(!fs::dir_exists(fs::path(targetDir, file)))
       extractL0TarAchive(compressed, fs::path(targetDir, file))
+    if(hashDir(fs::path(targetDir, file)) !=  file) 
+      stop(paste0("Hash mismatch for remote cellar file: ", file))
+      
     TRUE
   }
 
-  repos <- c('https://static.jasp-stats.org/JASP_BINARY_REPO/', additionalRepoURLs)
+  repos <- getRemoteCellarURLs(c('https://repo.jasp-stats.org', additionalRepoURLs), repoNames)
   hashesNeeded <- hashes
   for(repo in repos) {
     if(length(hashesNeeded) <= 0) break

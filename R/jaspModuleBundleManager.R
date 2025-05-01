@@ -4,7 +4,7 @@
 #' @param installPath Path to the root of the module install folder
 #' @param bundlePath Path to bundle to install
 #' @export
-installJaspModuleBundle <- function(installPath, bundlePath) {
+installJaspModuleBundle <- function(installPath, bundlePath, repoNames=c('development'), additionalRepos=NULL) {
   binaryPkgsPath <- fs::path(installPath, 'binary_pkgs')
   modulesLibPaths <- fs::path(installPath, 'module_libs')
   manifestPath <- fs::path(installPath, 'manifests')
@@ -33,14 +33,13 @@ installJaspModuleBundle <- function(installPath, bundlePath) {
   manifest <- fs::dir_ls(untarBundleDir, type='file', glob='*_manifest.json')
   manifestDestinationPath <- fs::path(manifestPath, fs::path_file(manifest[[1]]))
   if(fs::file_exists(manifestDestinationPath)) uninstallJaspModuleBundleByManifest(installPath, manifestDestinationPath, newManifest=manifest[[1]]) #If this module is already present delete it
-  tmp <- fs::file_copy(manifest[[1]], manifestDestinationPath, overwrite=TRUE)
+  manifestFile <- fs::file_copy(manifest[[1]], manifestDestinationPath, overwrite=TRUE)
   fs::file_delete(manifest)
-  manifest <- tmp
-  manifest <- parseManifest(manifest)[, 1]
+  manifest <- parseManifest(manifestFile)[, 1]
 
   #download and extract any missing pkgs that were not included in the bundle from the online repo
   if(!manifest$complete == TRUE)
-    repairJaspModuleBundleByManifest(installPath, manifest)
+    repairJaspModuleBundleByManifest(installPath, manifestFile)
 
   #create moduleLib entry (folder with symlinks to actual pkgs) from manifest mapping
   entryPath <- fs::path(modulesLibPaths, manifest$name)
@@ -85,7 +84,8 @@ uninstallJaspModuleBundleByManifest <- function(installPath, oldManifest, newMan
 
   #delete lib entry
   entry <- fs::path(installPath, 'module_libs', rmManifest['name', ])
-  fs::dir_delete(entry)
+  if(fs::dir_exists(entry))
+    fs::dir_delete(entry)
 
   #delete manifest
   fs::file_delete(oldManifest)
@@ -94,14 +94,14 @@ uninstallJaspModuleBundleByManifest <- function(installPath, oldManifest, newMan
 
 
 #' @export
-repairJaspModuleBundle <- function(installPath, name) {
+repairJaspModuleBundle <- function(installPath, name, repoNames=c('development'), additionalRepos=NULL) {
   manifest <- fs::dir_ls(fs::path(installPath, 'manifests'), type='file', regexp=name)[[1]]
-  repairJaspModuleBundleByManifest(installPath, manifest)
+  repairJaspModuleBundleByManifest(installPath, manifest, repoNames, additionalRepos)
 }
 
 
 #' @export
-repairJaspModuleBundleByManifest <- function(installPath, manifest) {
+repairJaspModuleBundleByManifest <- function(installPath, manifest, repoNames=c('development'), additionalRepos=NULL) {
   #get the needed pkg hashes from the manifest, subtract those we already have in the binary_pkg folder
   binaryPkgsPath <- fs::path(installPath, 'binary_pkgs')
   manifest <- parseManifest(manifest)[, 1]
@@ -110,7 +110,7 @@ repairJaspModuleBundleByManifest <- function(installPath, manifest) {
   hashesNeeded <- hashesNeeded[!(hashesNeeded %in% hashesPresent)]
 
   #attempt to download them all from the repo and extract them to binary_pkg folder
-  gatherPkgsFromRepo(hashesNeeded, binaryPkgsPath)
+  gatherPkgsFromRepo(hashesNeeded, binaryPkgsPath, repoNames, additionalRepos)
 
   #check if we now have all. if not print something and return non null
   hashesPresent <- fs::path_file(fs::dir_ls(binaryPkgsPath, type='directory'))
@@ -140,13 +140,11 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
     paste(name, version, sep='_') #_ is not allowed in R pkg names
   }
   mappingNames <- sapply(pkgDirs, gatherNameVersionNum)
-
+  
   #get all the pkgs and tar them. rename to hash of tar itself. Gives back a list of hashes with the original pkg-Name in names() (so a map)
   makeTar <- function(dir) {
-    tmp <- fs::path(stagingDir, 'tmp.tar.gz')
-    createL0TarAchive(dir, tmp)
-    hash <- stringr::str_replace(openssl::sha256(file(tmp)), ':', '')
-    fs::file_move(tmp, fs::path(tarDir, hash))
+    hash <- hashDir(dir)
+    createL0TarAchive(dir, fs::path(tarDir, hash))
     hash
   }
   pkgToArchiveMap <- sapply(pkgDirs, makeTar)
@@ -157,9 +155,8 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
     fs::file_copy(fs::dir_ls(tarDir), preCompressionBundleDir)
   else {
     if(stringr::str_detect(mustPackage[[1]], '_')) mustPackage <- stringr::str_split(mustPackage, pattern='_', simplify=TRUE)[,1] #delete the version number as we do not need it
-    hashesToPackage <- pkgToArchiveMap[mustPackage]
-    print(hashesToPackage)
-    fs::file_copy(fs::path(tarDir, hashesToPackage), preCompressionBundleDir)
+    hashesToPack <- pkgToArchiveMap[mustPackage]
+    fs::file_copy(fs::path(tarDir, hashesToPack), preCompressionBundleDir)
   }
 
   #write a little manifest with hash => name_version mappings
