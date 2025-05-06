@@ -135,7 +135,8 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
   #gather final 'pkgName_version' for later manifest mapping
   pkgDirs <- fs::dir_ls(moduleLib, type = 'any')
   gatherNameVersionNum <- function(pkgDir) {
-    version <- getModuleInfo(pkgDir)[['Version']]
+    info <- getModuleInfo(pkgDir) 
+    version <- if('RemoteSha' %in% names(info)) substr(info[['RemoteSha']], 1, 8) else info[['Version']]
     name <- fs::path_file(pkgDir)
     paste(name, version, sep='_') #_ is not allowed in R pkg names
   }
