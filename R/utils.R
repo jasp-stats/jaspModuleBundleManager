@@ -17,6 +17,7 @@ hashDir <- function(path) {
 }
 
 getRemoteCellarURLs <- function(baseURLs, repoNames) {
+  if(length(repoNames) == 0) return(c())
   func <- function(a,b) {paste(a,b, 'PKGS', sep='/')}
   outer(baseURLs, repoNames, FUN=func)
 }
