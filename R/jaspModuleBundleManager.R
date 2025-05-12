@@ -39,7 +39,7 @@ installJaspModuleBundle <- function(installPath, bundlePath, repoNames=c('develo
 
   #download and extract any missing pkgs that were not included in the bundle from the online repo
   if(!manifest$complete == TRUE)
-    repairJaspModuleBundleByManifest(installPath, manifestFile)
+    repairJaspModuleBundleByManifest(installPath, manifestFile, repoNames)
 
   #create moduleLib entry (folder with symlinks to actual pkgs) from manifest mapping
   entryPath <- fs::path(modulesLibPaths, manifest$name)
