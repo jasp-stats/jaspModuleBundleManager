@@ -111,7 +111,7 @@ getUnavailableHashes <- function(hashes, repoNames = c('development'), additiona
     }, error = function(e) { list(status_code=404) })
     req$status_code == 405
   }
-print(hashes)
+
   repos <- getRemoteCellarURLs(c('https://repo.jasp-stats.org', additionalRepoURLs), repoNames)
   hashesNeeded <- hashes
   for(repo in repos) {
