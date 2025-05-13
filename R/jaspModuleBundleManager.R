@@ -160,7 +160,7 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
     print(hashesToPack)
     if(length(mustPackage) > 0) {
       if(stringr::str_detect(mustPackage[[1]], '_')) mustPackage <- stringr::str_split(mustPackage, pattern='_', simplify=TRUE)[,1] #delete the version number as we do not need it
-      hashesToPack <- pkgToArchiveMap[mustPackage]
+      hashesToPack <- c(pkgToArchiveMap[mustPackage], hashesToPack)
     }
     fs::file_copy(fs::path(tarDir, hashesToPack), preCompressionBundleDir)
   }
