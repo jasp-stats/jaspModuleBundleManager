@@ -100,3 +100,24 @@ gatherPkgsFromRepo <- function(hashes, targetDir = './', repoNames = c('developm
 
   return(0)
 }
+
+
+getUnavailableHashes <- function(hashes, repoNames = c('development'), additionalRepoURLs = NULL) {
+  check <- function(file, repoURL, targetDir) {
+    h <- new_handle()                                                                                                                                    
+    handle_setopt(h, customrequest = "PUT")
+    req <- tryCatch({
+      curl::curl_fetch_memory(paste0(repoURL, '/', file), handle=h)
+    }, error = function(e) { list(status_code=404) })
+    req$status_code == 405
+  }
+
+  repos <- getRemoteCellarURLs(c('https://repo.jasp-stats.org', additionalRepoURLs), repoNames)
+  hashesNeeded <- hashes
+  for(repo in repos) {
+    if(length(hashesNeeded) <= 0) break
+    res <- sapply(hashesNeeded, check, repo, targetDir)
+    hashesNeeded <- hashesNeeded[!res]
+  }
+  hashesNeeded
+}
