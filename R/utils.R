@@ -104,8 +104,8 @@ gatherPkgsFromRepo <- function(hashes, targetDir = './', repoNames = c('developm
 
 getUnavailableHashes <- function(hashes, repoNames = c('development'), additionalRepoURLs = NULL) {
   check <- function(file, repoURL, targetDir) {
-    h <- new_handle()                                                                                                                                    
-    handle_setopt(h, customrequest = "PUT")
+    h <- curl::new_handle()                                                                                                                                    
+    curl::handle_setopt(h, customrequest = "PUT")
     req <- tryCatch({
       curl::curl_fetch_memory(paste0(repoURL, '/', file), handle=h)
     }, error = function(e) { list(status_code=404) })
