@@ -47,6 +47,7 @@ installJaspModuleBundle <- function(installPath, bundlePath, repoNames=c('develo
   from <- fs::path(fs::path_rel(binaryPkgsPath, start=entryPath), manifest$from)
   to <- fs::path(entryPath, manifest$to)
   createLink(from, to)
+  entryPath
 }
 
 # Todo expand with version check
