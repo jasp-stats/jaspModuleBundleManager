@@ -180,6 +180,7 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
 
   #archive all into one bundle and clean up
   resultPath = fs::path_ext_set(fs::path(resultdir, moduleName), 'JASPModule')
+  fs::file_copy(manifest, resultdir)
   createL0TarAchive(preCompressionBundleDir, resultPath)
 }
 
