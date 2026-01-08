@@ -136,13 +136,13 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
   #gather final 'pkgName_version' for later manifest mapping
   pkgDirs <- fs::dir_ls(moduleLib, type = 'any')
   gatherNameVersionNum <- function(pkgDir) {
-    info <- getModuleInfo(pkgDir) 
+    info <- getModuleInfo(pkgDir)
     version <- if('RemoteSha' %in% names(info)) substr(info[['RemoteSha']], 1, 8) else info[['Version']]
     name <- fs::path_file(pkgDir)
     paste(name, version, sep='_') #_ is not allowed in R pkg names
   }
   mappingNames <- sapply(pkgDirs, gatherNameVersionNum)
-  
+
   #get all the pkgs and tar them. rename to hash of tar itself. Gives back a list of hashes with the original pkg-Name in names() (so a map)
   makeTar <- function(dir) {
     hash <- hashDir(dir)
@@ -180,7 +180,7 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
 
   #archive all into one bundle and clean up
   resultPath = fs::path_ext_set(fs::path(resultdir, moduleName), 'JASPModule')
-  fs::file_copy(manifest, resultdir)
+  fs::file_copy(manifest, resultdir, overwrite = TRUE)
   createL0TarAchive(preCompressionBundleDir, resultPath)
 }
 

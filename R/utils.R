@@ -24,23 +24,16 @@ getRemoteCellarURLs <- function(baseURLs, repoNames) {
   outer(baseURLs, repoNames, FUN=func)
 }
 
-createL0TarAchive <- function(inputDir, outputPath) { #using TAR in R is so damn annoying
+createL0TarAchive <- function(inputDir, outputPath) {
   inputDir <- fs::path_abs(inputDir)
   outputPath <- fs::path_abs(outputPath)
-  old_workdir <- setwd(inputDir)
-  on.exit(setwd(old_workdir)) #if error
-  tar(outputPath, compression='gzip', tar='internal', compression_level=9)
-  setwd(old_workdir)
+  archive::archive_write_dir(outputPath, inputDir, format = "tar", filter = "zstd")
 }
 
-extractL0TarAchive <- function(tarfile, exdir) { #using TAR in R is so damn annoying
+extractL0TarAchive <- function(tarfile, exdir) {
   exdir <- fs::path_abs(exdir)
   tarfile <- fs::path_abs(tarfile)
-  fs::dir_create(exdir)
-  old_workdir <- setwd(exdir)
-  on.exit(setwd(old_workdir)) #if error
-  untar(tarfile, tar='internal')
-  setwd(old_workdir)
+  archive::archive_extract(tarfile, exdir)
 }
 
 createLink <- function(from, to, forceSymlink=FALSE) {
@@ -80,9 +73,9 @@ gatherPkgsFromRepo <- function(hashes, targetDir = './', repoNames = c('developm
       return(FALSE)
     if(!fs::dir_exists(fs::path(targetDir, file)))
       extractL0TarAchive(compressed, fs::path(targetDir, file))
-    if(hashDir(fs::path(targetDir, file)) !=  file) 
+    if(hashDir(fs::path(targetDir, file)) !=  file)
       stop(paste0("Hash mismatch for remote cellar file: ", file))
-      
+
     TRUE
   }
 
@@ -106,7 +99,7 @@ gatherPkgsFromRepo <- function(hashes, targetDir = './', repoNames = c('developm
 
 getUnavailableHashes <- function(hashes, repoNames = c('development'), additionalRepoURLs = NULL) {
   check <- function(file, repoURL, targetDir) {
-    h <- curl::new_handle()                                                                                                                                    
+    h <- curl::new_handle()
     curl::handle_setopt(h, customrequest = "PUT")
     req <- tryCatch({
       curl::curl_fetch_memory(paste0(repoURL, '/', file), handle=h)

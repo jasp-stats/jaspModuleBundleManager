@@ -1,7 +1,7 @@
 Package: jaspModuleBundleManager
 Type: Package
-Title: Helper Package for Installing JASP Modules
-Version: 0.1.0
+Title: Helper Package for Installing and Creating JASP Module Bundles
+Version: 0.1.1
 Author: JASP Team
 Maintainer: Rens Dofferhoff <r.m.j.dofferhoff@uva.nl>
 Description: Creates and Manages JASP module bundles
@@ -16,7 +16,8 @@ Imports:
     fs,
     rjson,
     stringr,
-    curl
+    curl,
+    archive
 RoxygenNote: 7.3.2
 Suggests: 
     testthat (>= 3.0.0)
