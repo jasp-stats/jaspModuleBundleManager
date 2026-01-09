@@ -27,7 +27,16 @@ getRemoteCellarURLs <- function(baseURLs, repoNames) {
 createL0TarAchive <- function(inputDir, outputPath) {
   inputDir <- fs::path_abs(inputDir)
   outputPath <- fs::path_abs(outputPath)
-  archive::archive_write_dir(outputPath, inputDir, format = "tar", filter = "zstd")
+
+  if (.Platform$OS.type != "windows") {
+    archive::archive_write_dir(outputPath, inputDir, format = "tar", filter = "zstd")
+  }
+  else { #on windows archive pkg seems to just be broken beyond compressing text files. Any binary ops tweak out archive :'(
+    old_workdir <- setwd(inputDir)
+    on.exit(setwd(old_workdir)) #if error
+    tar(outputPath, compression='zstd', tar='internal', compression_level=3)
+    setwd(old_workdir)
+  }
 }
 
 extractL0TarAchive <- function(tarfile, exdir) {
