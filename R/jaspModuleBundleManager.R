@@ -174,7 +174,9 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
   manifestList <- list(name=moduleName, version=version, complete=packageAll, checksum=hash, pack_date=packDate,
                   RVersion=RVersion, os=os, architecture=arch,
                   mapping=paste(pkgToArchiveMap, mappingNames, sep=" => "))
-  json <- rjson::toJSON(c(manifestList, includeInManifest), indent=1)
+  manifestList <- c(includeInManifest, manifestList)
+  manifestList <- manifestList[!duplicated(names(manifestList))] #remove double entries
+  json <- rjson::toJSON(manifestList, indent=1)
   manifest <- fs::file_create(fs::path(preCompressionBundleDir, paste0(moduleName, '_manifest.json')))
   write(json, file=manifest)
 
