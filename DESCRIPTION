@@ -17,7 +17,7 @@ Imports:
     rjson,
     stringr,
     curl,
-    archive,
+    archive (<= 1.12.1),
     withr
 RoxygenNote: 7.3.2
 Suggests: 
