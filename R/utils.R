@@ -68,7 +68,7 @@ parseManifest <- function(manifestPath) {
     manifest$to   <- stringr::str_split(mapping[,2], pattern='_', simplify=TRUE)[,1]
     manifest
   }
-  sapply(manifestPath, parse)
+  lapply(manifestPath, parse)
 }
 
 gatherPkgsFromRepo <- function(hashes, targetDir = './', repoNames = c('development'), additionalRepoURLs = NULL) {
@@ -92,7 +92,7 @@ gatherPkgsFromRepo <- function(hashes, targetDir = './', repoNames = c('developm
   hashesNeeded <- hashes
   for(repo in repos) {
     if(length(hashesNeeded) <= 0) break
-    res <- sapply(hashesNeeded, download, repo, targetDir)
+    res <- unlist(lapply(hashesNeeded, download, repo, targetDir))
     hashesNeeded <- hashesNeeded[!res]
   }
 
@@ -120,7 +120,7 @@ getUnavailableHashes <- function(hashes, repoNames = c('development'), additiona
   hashesNeeded <- hashes
   for(repo in repos) {
     if(length(hashesNeeded) <= 0) break
-    res <- sapply(hashesNeeded, check, repo, targetDir)
+    res <- unlist(lapply(hashesNeeded, check, repo, targetDir))
     hashesNeeded <- hashesNeeded[!res]
   }
   hashesNeeded

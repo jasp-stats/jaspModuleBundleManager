@@ -27,7 +27,7 @@ installJaspModuleBundle <- function(installPath, bundlePath, repoNames=c('develo
       extractL0TarAchive(pkg, fs::path(binaryPkgsPath, hash))
     }
   }
-  sapply(pkgs, untarPkgtoBinDir)
+  invisible(lapply(pkgs, untarPkgtoBinDir))
 
   #Move manifest to manifest folder. But first check if a different version is already installed if so uninstall
   manifest <- fs::dir_ls(untarBundleDir, type='file', glob='*_manifest.json')
@@ -35,7 +35,7 @@ installJaspModuleBundle <- function(installPath, bundlePath, repoNames=c('develo
   if(fs::file_exists(manifestDestinationPath)) uninstallJaspModuleBundleByManifest(installPath, manifestDestinationPath, newManifest=manifest[[1]]) #If this module is already present delete it
   manifestFile <- fs::file_copy(manifest[[1]], manifestDestinationPath, overwrite=TRUE)
   fs::file_delete(manifest)
-  manifest <- parseManifest(manifestFile)[, 1]
+  manifest <- parseManifest(manifestFile)[[1]]
 
   #download and extract any missing pkgs that were not included in the bundle from the online repo
   if(!manifest$complete == TRUE)
@@ -75,16 +75,16 @@ uninstallJaspModuleBundleByManifest <- function(installPath, oldManifest, newMan
 
   keep <- list()
   if(length(manifests) > 0)
-    keep <- unique(unlist(manifests['from',]))
+    keep <- unique(unlist(lapply(manifests, `[[`, 'from')))
 
-  rmManifest <- parseManifest(oldManifest)
-  rm <- unique(unlist(rmManifest['from',]))
+  rmManifest <- parseManifest(oldManifest)[[1]]
+  rm <- rmManifest$from
   rm <- rm[!(rm %in% keep)]
   rmPaths <- fs::path(installPath, 'binary_pkgs', rm)
   fs::dir_delete(rmPaths)
 
   #delete lib entry
-  entry <- fs::path(installPath, 'module_libs', rmManifest['name', ])
+  entry <- fs::path(installPath, 'module_libs', rmManifest$name)
   if(fs::dir_exists(entry))
     fs::dir_delete(entry)
 
@@ -105,7 +105,7 @@ repairJaspModuleBundle <- function(installPath, name, repoNames=c('development')
 repairJaspModuleBundleByManifest <- function(installPath, manifest, repoNames=c('development'), additionalRepos=NULL) {
   #get the needed pkg hashes from the manifest, subtract those we already have in the binary_pkg folder
   binaryPkgsPath <- fs::path(installPath, 'binary_pkgs')
-  manifest <- parseManifest(manifest)[, 1]
+  manifest <- parseManifest(manifest)[[1]]
   hashesNeeded <- manifest$from
   hashesPresent <- fs::path_file(fs::dir_ls(binaryPkgsPath, type='directory'))
   hashesNeeded <- hashesNeeded[!(hashesNeeded %in% hashesPresent)]
@@ -141,7 +141,7 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
     name <- fs::path_file(pkgDir)
     paste(name, version, sep='_') #_ is not allowed in R pkg names
   }
-  mappingNames <- sapply(pkgDirs, gatherNameVersionNum)
+  mappingNames <- unlist(lapply(pkgDirs, gatherNameVersionNum))
 
   #get all the pkgs and tar them. rename to hash of tar itself. Gives back a list of hashes with the original pkg-Name in names() (so a map)
   makeTar <- function(dir) {
@@ -149,7 +149,7 @@ createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRU
     createL0TarAchive(dir, fs::path(tarDir, hash))
     hash
   }
-  pkgToArchiveMap <- sapply(pkgDirs, makeTar)
+  pkgToArchiveMap <- unlist(lapply(pkgDirs, makeTar))
   names(pkgToArchiveMap) <- fs::path_file(names(pkgToArchiveMap)) #strip rest of path in names() to make indexing on pkg name easy
 
   #copy the packages we are instructed to pack into the bundle
@@ -195,7 +195,7 @@ extractBundleIntoRemoteCellarRepo <- function(repoRoot, bundlePath, repoName='de
   on.exit(if(fs::dir_exists(stagingDir))fs::dir_delete(stagingDir))
   extractL0TarAchive(bundlePath, untarBundleDir)
   manifestPath <- fs::dir_ls(untarBundleDir, type='file', glob='*_manifest.json')[[1]]
-  manifest <- parseManifest(manifestPath)[, 1]
+  manifest <- parseManifest(manifestPath)[[1]]
 
   if(missing(RVersion)) RVersion <- manifest$RVersion
   if(missing(os)) os <- manifest$os
@@ -216,7 +216,7 @@ extractBundleIntoRemoteCellarRepo <- function(repoRoot, bundlePath, repoName='de
       print('Hash conflict! We are overriding. You might have meant to do this, so dont worry?')
     fs::file_copy(pkg, outPath, overwrite = TRUE)
   }
-  sapply(pkgs, copyPkgtoBinDir)
+  invisible(lapply(pkgs, copyPkgtoBinDir))
 
   #add symlinks to the cellarPath for those archives that we just extracted
   hashesPresent <- fs::path_file(pkgs)
