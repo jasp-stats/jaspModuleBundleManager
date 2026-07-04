@@ -126,8 +126,8 @@ repairJaspModuleBundleByManifest <- function(installPath, manifest, repoNames=c(
 }
 
 #' @export
-createJaspModuleBundle <- function(moduleLib, resultdir = './', packageAll = TRUE, mustPackage=NULL, includeInManifest=NULL, repoNames=c('development')) {
-  moduleName <- fs::path_file(moduleLib)
+createJaspModuleBundle <- function(moduleLib, moduleName = NULL, resultdir = './', packageAll = TRUE, mustPackage=NULL, includeInManifest=NULL, repoNames=c('development')) {
+  if (is.null(moduleName)) moduleName <- fs::path_file(moduleLib)
   stagingDir <- fs::dir_create(tempdir(), moduleName)
   on.exit(if(fs::dir_exists(stagingDir)) fs::dir_delete(stagingDir))
   tarDir <- fs::dir_create(stagingDir, 'tarDir')
