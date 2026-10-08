@@ -45,6 +45,21 @@ extractL0TarAchive <- function(tarfile, exdir) {
   archive::archive_extract(tarfile, exdir)
 }
 
+nestBinaryPkgIfNeeded <- function(hashDir, pkgName) {
+  #Turn a flat binary_pkgs/<hash> (the package at its root, the old layout) into a micro-library
+  #binary_pkgs/<hash>/<pkgname>/, so that the hash dir itself is a valid R library path. Idempotent:
+  #already-nested and missing dirs are left alone. Windows-only concern, but safe anywhere.
+  if(!fs::file_exists(fs::path(hashDir, 'DESCRIPTION')))
+    return(invisible(FALSE))
+
+  staging <- fs::path(fs::path_dir(hashDir), paste0(fs::path_file(hashDir), '_nesting'))
+  fs::dir_create(staging)
+  on.exit(if(fs::dir_exists(staging)) fs::dir_delete(staging), add = TRUE)
+  fs::dir_move(hashDir, fs::path(staging, pkgName))
+  fs::dir_move(staging, hashDir)
+  invisible(TRUE)
+}
+
 createLink <- function(from, to, forceSymlink=FALSE) {
   fs::link_delete(to[fs::link_exists(to)])
   if (.Platform$OS.type == "windows") {

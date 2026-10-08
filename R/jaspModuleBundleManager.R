@@ -41,10 +41,20 @@ installJaspModuleBundle <- function(installPath, bundlePath, repoNames=c('develo
   if(!manifest$complete == TRUE)
     repairJaspModuleBundleByManifest(installPath, manifestFile, repoNames)
 
+  #On Windows there are no proper symlinks, so we turn every hash dir into a micro-library
+  #(binary_pkgs/<hash>/<pkgname>/). JASP can then pass those dirs to .libPaths() directly and module
+  #loading no longer depends on the junction farm in appData. Already-installed flat dirs are nested
+  #in place (a move, no re-extract), so upgrading an old install migrates it automatically.
+  #Linux/macOS keep the flat layout and use proper symlinks instead.
+  if(.Platform$OS.type == 'windows')
+    invisible(mapply(nestBinaryPkgIfNeeded, fs::path(binaryPkgsPath, manifest$from), manifest$to))
+
   #create moduleLib entry (folder with symlinks to actual pkgs) from manifest mapping
   entryPath <- fs::path(modulesLibPaths, manifest$name)
   fs::dir_create(entryPath)
   from <- fs::path(fs::path_rel(binaryPkgsPath, start=entryPath), manifest$from)
+  if(.Platform$OS.type == 'windows')
+    from <- fs::path(from, manifest$to) #the junctions point inside the micro-libraries
   to <- fs::path(entryPath, manifest$to)
   createLink(from, to)
   entryPath
