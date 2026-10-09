@@ -44,19 +44,23 @@ installJaspModuleBundle <- function(installPath, bundlePath, repoNames=c('develo
   #On Windows there are no proper symlinks, so we turn every hash dir into a micro-library
   #(binary_pkgs/<hash>/<pkgname>/). JASP can then pass those dirs to .libPaths() directly and module
   #loading no longer depends on the junction farm in appData. Already-installed flat dirs are nested
-  #in place (a move, no re-extract), so upgrading an old install migrates it automatically.
-  #Linux/macOS keep the flat layout and use proper symlinks instead.
+  #in place (a move, no re-extract), so upgrading an old install migrates it automatically; flat
+  #hashes shared with older (junction-layout) modules get their entries re-pointed (see
+  #nestAndHealSharedHashes). Linux/macOS keep the flat layout and use proper symlinks instead.
   if(.Platform$OS.type == 'windows')
-    invisible(mapply(nestBinaryPkgIfNeeded, fs::path(binaryPkgsPath, manifest$from), manifest$to))
+    nestAndHealSharedHashes(binaryPkgsPath, modulesLibPaths, manifestPath, manifestFile, manifest)
 
-  #create moduleLib entry (folder with symlinks to actual pkgs) from manifest mapping
-  entryPath <- fs::path(modulesLibPaths, manifest$name)
-  fs::dir_create(entryPath)
-  from <- fs::path(fs::path_rel(binaryPkgsPath, start=entryPath), manifest$from)
+  #create the moduleLib entry from the manifest mapping: symlinks to the binary pkgs on unix,
+  #real copies of only the name-keyed must-haves on Windows (see createWindowsModuleLibEntry)
   if(.Platform$OS.type == 'windows')
-    from <- fs::path(from, manifest$to) #the junctions point inside the micro-libraries
-  to <- fs::path(entryPath, manifest$to)
-  createLink(from, to)
+    entryPath <- createWindowsModuleLibEntry(installPath, manifest)
+  else {
+    entryPath <- fs::path(modulesLibPaths, manifest$name)
+    fs::dir_create(entryPath)
+    from <- fs::path(fs::path_rel(binaryPkgsPath, start=entryPath), manifest$from)
+    to <- fs::path(entryPath, manifest$to)
+    createLink(from, to)
+  }
   entryPath
 }
 
@@ -115,6 +119,7 @@ repairJaspModuleBundle <- function(installPath, name, repoNames=c('development')
 repairJaspModuleBundleByManifest <- function(installPath, manifest, repoNames=c('development'), additionalRepos=NULL) {
   #get the needed pkg hashes from the manifest, subtract those we already have in the binary_pkg folder
   binaryPkgsPath <- fs::path(installPath, 'binary_pkgs')
+  manifestFile <- manifest
   manifest <- parseManifest(manifest)[[1]]
   hashesNeeded <- manifest$from
   hashesPresent <- fs::path_file(fs::dir_ls(binaryPkgsPath, type='directory'))
@@ -130,6 +135,14 @@ repairJaspModuleBundleByManifest <- function(installPath, manifest, repoNames=c(
     print('Failed to find and gather the following Packages:')
     print(hashesleft)
     return(-1)
+  }
+
+  #Heal the layout as well (Windows): freshly downloaded hash dirs are flat, so nest them into
+  #micro-libraries and rebuild the module_libs entry — a repaired install then no longer depends
+  #on legacy junctions at all.
+  if(.Platform$OS.type == 'windows') {
+    nestAndHealSharedHashes(binaryPkgsPath, fs::path(installPath, 'module_libs'), fs::path(installPath, 'manifests'), manifestFile, manifest)
+    createWindowsModuleLibEntry(installPath, manifest)
   }
 
   return(0)

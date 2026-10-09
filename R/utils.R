@@ -55,9 +55,82 @@ nestBinaryPkgIfNeeded <- function(hashDir, pkgName) {
   staging <- fs::path(fs::path_dir(hashDir), paste0(fs::path_file(hashDir), '_nesting'))
   fs::dir_create(staging)
   on.exit(if(fs::dir_exists(staging)) fs::dir_delete(staging), add = TRUE)
-  fs::dir_move(hashDir, fs::path(staging, pkgName))
-  fs::dir_move(staging, hashDir)
+  fs::file_move(hashDir, fs::path(staging, pkgName)) #fs has no dir_move; file_move moves dirs too
+  fs::file_move(staging, hashDir)
   invisible(TRUE)
+}
+
+#Packages that start with "jasp" but are shared infrastructure rather than modules. They carry no QML
+#of their own, so they never need a name-keyed entry inside another module's module_libs dir.
+jaspInfraPkgs <- c('jaspBase', 'jaspGraphs', 'jaspTools', 'jaspResults', 'jaspWorkarounds')
+
+isJaspModulePkg <- function(pkgName) {
+  startsWith(pkgName, 'jasp') & !(pkgName %in% jaspInfraPkgs) #vectorized: pkgName is manifest$to
+}
+
+createWindowsModuleLibEntry <- function(installPath, manifest) {
+  #Windows module_libs entries contain real directory copies instead of links. Plain R deps are
+  #served straight from their binary_pkgs micro-libraries through .libPaths() (JASP derives those
+  #from the manifest in AppDirs::moduleExtraLibPaths), so only packages that must exist under
+  #their own name inside this dir are copied: the module package itself and every dependency that
+  #is itself a JASP module — modules import each other's QML through relative paths that resolve
+  #positionally through the importer's entry dir. A few MB per cross-module edge (~34 in total)
+  #buys us the end of the appData junction farm (jasp-issues #4586).
+  entryPath <- fs::path(installPath, 'module_libs', manifest$name)
+  if(fs::dir_exists(entryPath)) #may hold stale entries from an interrupted or pre-copy-rule install
+    fs::dir_delete(entryPath)
+  fs::dir_create(entryPath)
+
+  needsEntry <- manifest$to == manifest$name | isJaspModulePkg(manifest$to)
+  copyPkg <- function(hash, pkg) {
+    from <- fs::path(installPath, 'binary_pkgs', hash, pkg)
+    if(!fs::dir_exists(from)) {
+      warning(paste0('Missing micro-library binary_pkgs/', hash, '/', pkg, ', not creating a module_libs entry for it'))
+      return(invisible(FALSE))
+    }
+    fs::dir_copy(from, fs::path(entryPath, pkg))
+    invisible(TRUE)
+  }
+  invisible(mapply(copyPkg, manifest$from[needsEntry], manifest$to[needsEntry]))
+  entryPath
+}
+
+nestAndHealSharedHashes <- function(binaryPkgsPath, modulesLibPaths, manifestPath, ownManifestFile, manifest) {
+  #Nest every hash of `manifest` (see nestBinaryPkgIfNeeded) and, when a hash that was still FLAT
+  #is also referenced by another installed manifest, re-point that module's module_libs junction
+  #one level deeper. Without this, nesting moves the package out from under the older (junction
+  #layout) module's entry: R loading self-heals through the micro-library, but the name-keyed
+  #entries — needed for cross-module QML imports — would dangle. A junction is the entry's native
+  #idiom, is created instantly and dedups perfectly; if creation is blocked (AV & friends,
+  #jasp-issues#4586) we fall back to a real dir copy. Healthy real-copy entries are left alone.
+  otherManifests <- setdiff(fs::dir_ls(manifestPath, type = 'file', glob = '*_manifest.json'), ownManifestFile)
+  others <- if (length(otherManifests) > 0) parseManifest(otherManifests) else list()
+
+  nestOne <- function(hash, pkg) {
+    hashDir <- fs::path(binaryPkgsPath, hash)
+    wasFlat <- fs::file_exists(fs::path(hashDir, 'DESCRIPTION'))
+    nestBinaryPkgIfNeeded(hashDir, pkg)
+
+    if (wasFlat && length(others) > 0)
+      for (m in others) {
+        i <- match(hash, m$from)
+        if (is.na(i)) next
+        target <- fs::path(hashDir, m$to[i])
+        link <- fs::path(modulesLibPaths, m$name, m$to[i])
+        if (fs::dir_exists(link) && !fs::link_exists(link))
+          next #a healthy real copy already serves this entry
+        tryCatch({
+          if (fs::link_exists(link))
+            fs::link_delete(link)
+          Sys.junction(target, link)
+        }, error = function(e) {
+          warning(paste0('Could not re-point junction ', link, ' (', conditionMessage(e), '), falling back to a real copy'))
+          fs::dir_copy(target, link)
+        })
+      }
+    invisible(TRUE)
+  }
+  invisible(mapply(nestOne, manifest$from, manifest$to))
 }
 
 createLink <- function(from, to, forceSymlink=FALSE) {
